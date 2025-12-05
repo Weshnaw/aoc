@@ -7,12 +7,9 @@ fn calculate_joltage<const N: usize>(input: &str) -> u64 {
         return 0;
     }
 
-    let digits = input
-        .as_bytes()
-        .iter()
-        .rev()
-        .enumerate()
-        .fold([0u64; N], |mut current_digits, (idx, current_character)| {
+    let digits = input.as_bytes().iter().rev().enumerate().fold(
+        [0u64; N],
+        |mut current_digits, (idx, current_character)| {
             let num = (current_character & 0x0F) as u64;
 
             if idx < N {
@@ -23,7 +20,8 @@ fn calculate_joltage<const N: usize>(input: &str) -> u64 {
             }
 
             current_digits
-        });
+        },
+    );
 
     let num: u64 = digits
         .iter()
@@ -46,11 +44,17 @@ fn cascading_update<const N: usize>(digits: &mut [u64; N], mut num: u64) {
             break;
         }
     }
-    trace!("Cascade result: num={num} len={}, digits={digits:?}", digits.len());
+    trace!(
+        "Cascade result: num={num} len={}, digits={digits:?}",
+        digits.len()
+    );
 }
 
 fn calculate_both(input: &str) -> (u64, u64) {
-    (calculate_joltage::<2>(input), calculate_joltage::<12>(input))
+    (
+        calculate_joltage::<2>(input),
+        calculate_joltage::<12>(input),
+    )
 }
 
 pub fn puzzle(input: &str) -> (u64, u64) {

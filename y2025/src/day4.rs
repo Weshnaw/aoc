@@ -23,27 +23,25 @@ pub fn puzzle(input: &str) -> (usize, usize) {
 }
 
 fn remove_paper(input: &mut Array2<u8>) -> usize {
-    let kernel = array![[
-        1u8, 1u8, 1u8
-    ],[
-        1u8, 0u8, 1u8
-    ],[
-        1u8, 1u8, 1u8
-    ]];
-    let sums = input.conv(&kernel, ConvMode::Same, PaddingMode::Zeros).unwrap();
+    let kernel = array![[1u8, 1u8, 1u8], [1u8, 0u8, 1u8], [1u8, 1u8, 1u8]];
+    let sums = input
+        .conv(&kernel, ConvMode::Same, PaddingMode::Zeros)
+        .unwrap();
 
     debug!("{sums:?}");
 
-    let number_removed = input.iter_mut().zip(sums.iter()).filter_map(|(input, conv)| {
-        if (input == &1) && (conv < &4) {
-            *input = 0;
-            Some(())
-        } else {
-            None
-        }
-    }).count();
-
-    number_removed
+    input
+        .iter_mut()
+        .zip(sums.iter())
+        .filter_map(|(input, conv)| {
+            if (input == &1) && (conv < &4) {
+                *input = 0;
+                Some(())
+            } else {
+                None
+            }
+        })
+        .count()
 }
 
 fn transform_str_to_ndarray(input: &str) -> Array2<u8> {
