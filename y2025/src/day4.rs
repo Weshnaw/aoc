@@ -10,58 +10,51 @@ pub fn puzzle(input: &str) -> (usize, usize) {
     let mut input = transform_str_to_ndarray(input);
     info!("{input:?}");
 
-    let part1_result = remove_paper(&mut input);
+    let kernel = array![[1u8, 1u8, 1u8], [1u8, 0u8, 1u8], [1u8, 1u8, 1u8]];
+
+    let part1_result = remove_paper(&mut input, &kernel);
 
     let mut removed = part1_result;
     let mut total = removed;
     while removed > 0 {
-        removed = remove_paper(&mut input);
+        removed = remove_paper(&mut input, &kernel);
         total += removed;
     }
 
     (part1_result, total)
 }
 
-fn remove_paper(input: &mut Array2<u8>) -> usize {
-    let kernel = array![[1u8, 1u8, 1u8], [1u8, 0u8, 1u8], [1u8, 1u8, 1u8]];
+fn remove_paper(input: &mut Array2<u8>, kernal: &Array2<u8>) -> usize {
     let sums = input
-        .conv(&kernel, ConvMode::Same, PaddingMode::Zeros)
+        .conv(kernal, ConvMode::Same, PaddingMode::Zeros)
         .unwrap();
 
     debug!("{sums:?}");
 
-    input
-        .iter_mut()
-        .zip(sums.iter())
-        .filter_map(|(input, conv)| {
-            if (input == &1) && (conv < &4) {
-                *input = 0;
-                Some(())
-            } else {
-                None
-            }
-        })
-        .count()
+    let mut removed = 0;
+    for (input, conv) in input.iter_mut().zip(sums.iter()) {
+        if *input == 1 && *conv < 4 {
+            *input = 0;
+            removed += 1;
+        }
+    }
+
+    return removed;
 }
 
 fn transform_str_to_ndarray(input: &str) -> Array2<u8> {
-    let raw_vec = input
-        .lines()
-        .map(|line| {
-            line.chars()
-                .map(|char| match char {
-                    '@' => 1,
-                    _ => 0,
-                })
-                .collect::<Vec<u8>>()
-        })
-        .collect::<Vec<Vec<u8>>>();
+    let rows = input.lines().count();
+    let cols = input.lines().next().unwrap().len();
 
-    Array2::from_shape_vec(
-        (raw_vec.len(), raw_vec[0].len()),
-        raw_vec.into_iter().flatten().collect(),
-    )
-    .unwrap()
+    let mut data = Vec::with_capacity(rows * cols);
+
+    for line in input.lines() {
+        for c in line.bytes() {
+            data.push((c == b'@') as u8);
+        }
+    }
+
+    Array2::from_shape_vec((rows, cols), data).unwrap()
 }
 
 #[cfg(test)]
