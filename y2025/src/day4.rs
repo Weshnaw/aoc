@@ -1,15 +1,28 @@
 use ndarray::{Array2, array};
 use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
-use tracing::info;
+use tracing::{debug, info};
 
-pub fn puzzle(input: &str) -> usize {
+pub fn puzzle(input: &str) -> (usize, usize) {
     if input.is_empty() {
-        return 0;
+        return (0, 0);
     }
 
-    let input = transform_str_to_ndarray(input);
+    let mut input = transform_str_to_ndarray(input);
     info!("{input:?}");
 
+    let part1_result = remove_paper(&mut input);
+
+    let mut removed = part1_result;
+    let mut total = removed;
+    while removed > 0 {
+        removed = remove_paper(&mut input);
+        total += removed;
+    }
+
+    (part1_result, total)
+}
+
+fn remove_paper(input: &mut Array2<u8>) -> usize {
     let kernel = array![[
         1u8, 1u8, 1u8
     ],[
@@ -17,13 +30,20 @@ pub fn puzzle(input: &str) -> usize {
     ],[
         1u8, 1u8, 1u8
     ]];
-
     let sums = input.conv(&kernel, ConvMode::Same, PaddingMode::Zeros).unwrap();
-    info!("{sums:?}");
 
-    let result = input.iter().zip(sums.iter()).filter(|(input, conv)| (input == &&1) && (conv < &&4)).count();
+    debug!("{sums:?}");
 
-    result
+    let number_removed = input.iter_mut().zip(sums.iter()).filter_map(|(input, conv)| {
+        if (input == &1) && (conv < &4) {
+            *input = 0;
+            Some(())
+        } else {
+            None
+        }
+    }).count();
+
+    number_removed
 }
 
 fn transform_str_to_ndarray(input: &str) -> Array2<u8> {
@@ -55,7 +75,7 @@ mod tests {
     #[test]
     fn test_empty_input() {
         let result = puzzle("");
-        assert_eq!(result, 0);
+        assert_eq!(result, (0, 0));
     }
 
     #[test]
@@ -72,12 +92,12 @@ mod tests {
 .@@@@@@@@.
 @.@.@@@.@.",
         );
-        assert_eq!(result, 13);
+        assert_eq!(result, (13, 43));
     }
 
     #[test]
     fn test_input() {
         let result = puzzle(include_str!("day4_input.txt"));
-        assert_eq!(result, 1435);
+        assert_eq!(result, (1435, 8623));
     }
 }
