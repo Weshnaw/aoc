@@ -57,7 +57,7 @@ mod tests {
 
     #[traced_test]
     #[test]
-    fn test_first_example() {
+    fn test_example_input() {
         let result = puzzle("\
 L68
 L30
@@ -76,7 +76,7 @@ L82
     #[traced_test]
     #[test]
     fn test_input() {
-        let result = puzzle(include_str!("input.txt"));
+        let result = puzzle(include_str!("day1_input.txt"));
         assert_eq!(result, (1150, 0));
     }
 }

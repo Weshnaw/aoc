@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-nom = "8.0.0"
-rayon = "1.11.0"
+nom = "8.0"
+rayon = "1.11"
 tracing = "0.1"
 
 [dev-dependencies]
