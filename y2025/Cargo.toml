@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+nom = "8.0.0"
+rayon = "1.11.0"
+tracing = "0.1"
+
+[dev-dependencies]
+tracing-test = "0.2.5"
