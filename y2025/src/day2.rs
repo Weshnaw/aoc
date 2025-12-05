@@ -8,7 +8,7 @@ fn two_match(id: &usize) -> bool {
 
     let digit_count = id.ilog10() + 1;
 
-    if digit_count % 2 != 0 {
+    if !digit_count.is_multiple_of(2) {
         return false;
     }
 
@@ -38,7 +38,7 @@ fn multiple_match(id: &usize) -> bool {
 
     for block_len in 1..=digit_count / 2 {
         // block must evenly divide the number of digits
-        if digit_count % block_len != 0 {
+        if !digit_count.is_multiple_of(block_len) {
             continue;
         }
 

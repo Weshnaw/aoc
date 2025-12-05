@@ -23,7 +23,7 @@ pub fn puzzle(input: &str) -> (usize, usize) {
         .lines()
         .fold(Accumulator::default(), |mut a, line| {
             if !line.is_empty() {
-                let distance: usize = (&line[1..]).parse().unwrap();
+                let distance: usize = line[1..].parse().unwrap();
                 let new_pos: i64 = if line.starts_with("R") {
                     a.current_pos + (distance as i64 % 100)
                 } else {
