@@ -2,6 +2,7 @@ pub fn puzzle(_input: &str) -> usize {
     todo!("puzzle");
 }
 
+
 #[cfg(test)]
 mod tests {
     use test_log::test;
@@ -16,13 +17,24 @@ mod tests {
 
     #[test]
     fn test_example_input() {
-        let result = puzzle("");
-        assert_eq!(result, 0);
+        let result = puzzle(
+            "..@@.@@@@.
+@@@.@.@.@@
+@@@@@.@.@@
+@.@@@@..@.
+@@.@@@@.@@
+.@@@@@@@.@
+.@.@.@.@@@
+@.@@@.@@@@
+.@@@@@@@@.
+@.@.@@@.@.",
+        );
+        assert_eq!(result, 13);
     }
 
     #[test]
     fn test_input() {
-        let result = puzzle(include_str!("day0_input.txt"));
+        let result = puzzle(include_str!("day4_input.txt"));
         assert_eq!(result, 0);
     }
 }

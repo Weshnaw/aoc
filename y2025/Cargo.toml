@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 itertools = "0.14.0"
+ndarray = { version = "0.17.1", features = ["rayon"] }
 nom = "8.0"
 rayon = "1.11"
 tracing = "0.1"
