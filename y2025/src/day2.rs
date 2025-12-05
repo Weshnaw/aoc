@@ -84,11 +84,11 @@ pub fn puzzle(input: &str) -> (usize, usize) {
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
-    use tracing_test::traced_test;
+    use test_log::test;
 
     use super::*;
 
-    #[traced_test]
+    #[test]
     #[rstest]
     #[case(0, false)]
     #[case(11, true)]
@@ -110,7 +110,7 @@ mod tests {
         assert_eq!(two_match(&input), expected);
     }
 
-    #[traced_test]
+    #[test]
     #[rstest]
     #[case(0, false)]
     #[case(11, true)]
@@ -136,14 +136,12 @@ mod tests {
         assert_eq!(multiple_match(&input), expected);
     }
 
-    #[traced_test]
     #[test]
     fn test_empty_input() {
         let result = puzzle("");
         assert_eq!(result, (0, 0));
     }
 
-    #[traced_test]
     #[test]
     fn test_example_input() {
         let result = puzzle(
@@ -152,7 +150,6 @@ mod tests {
         assert_eq!(result, (1227775554, 4174379265));
     }
 
-    #[traced_test]
     #[test]
     fn test_input() {
         let result = puzzle(include_str!("day2_input.txt"));
