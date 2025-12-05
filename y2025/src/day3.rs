@@ -8,11 +8,12 @@ fn calculate_joltage<const N: usize>(input: &str) -> u64 {
     }
 
     let digits = input
-        .chars()
+        .as_bytes()
+        .iter()
         .rev()
         .enumerate()
         .fold([0u64; N], |mut current_digits, (idx, current_character)| {
-            let num = current_character.to_digit(10).unwrap_or_default() as u64;
+            let num = (current_character & 0x0F) as u64;
 
             if idx < N {
                 current_digits[idx] = num;
@@ -25,7 +26,7 @@ fn calculate_joltage<const N: usize>(input: &str) -> u64 {
         });
 
     let num: u64 = digits
-        .into_par_iter()
+        .iter()
         .enumerate()
         .map(|(idx, digit)| 10u64.pow(idx as u32) * digit)
         .sum();
