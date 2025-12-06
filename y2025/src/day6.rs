@@ -16,10 +16,12 @@ mod tests {
 
     #[test]
     fn test_example_input() {
-        let result = puzzle("123 328  51 64 
+        let result = puzzle(
+            "123 328  51 64 
  45 64  387 23 
   6 98  215 314
-*   +   *   +  ");
+*   +   *   +  ",
+        );
         assert_eq!(result, (4277556, 0));
     }
 
