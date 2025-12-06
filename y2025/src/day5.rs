@@ -1,9 +1,11 @@
+use std::cmp::Ordering;
+
 use rayon::prelude::*;
 use tracing::info;
 use winnow::Parser;
 
 pub fn puzzle(input: &str) -> (u64, u64) {
-    let input = Ingredients::from_str(input);
+    let input = Ingredients::from_str(input).merge_ranges();
 
     (input.count_fresh(), input.total_fresh())
 }
@@ -24,7 +26,7 @@ impl From<(u64, u64)> for FreshRange {
 }
 
 #[derive(Debug, PartialEq, Default)]
-struct Ingredients {
+pub struct Ingredients {
     fresh: Vec<FreshRange>,
     inventory: Vec<u64>,
 }
@@ -34,7 +36,7 @@ impl Ingredients {
         parsing::parse_ingredients.parse(input).unwrap_or_default()
     }
 
-    fn count_fresh(&self) -> u64 {
+    pub fn count_fresh(&self) -> u64 {
         self.inventory
             .par_iter()
             .filter(|ingredient| {
@@ -45,13 +47,12 @@ impl Ingredients {
             .count() as u64
     }
 
-    fn total_fresh(&self) -> u64 {
-        let mut fresh = self.fresh.as_slice().to_vec();
-        fresh.sort_by_key(|f| f.start);
+    fn merge_ranges(mut self) -> MergedIngredients {
+        self.fresh.sort_by_key(|f| f.start);
 
-        let mut merged: Vec<FreshRange> = Vec::with_capacity(fresh.len());
+        let mut merged: Vec<FreshRange> = Vec::with_capacity(self.fresh.len());
 
-        for current_fresh in &fresh {
+        for current_fresh in &self.fresh {
             match merged.last_mut() {
                 Some(last) if current_fresh.start <= last.end => {
                     last.end = last.end.max(current_fresh.end);
@@ -61,7 +62,41 @@ impl Ingredients {
             info!(?merged);
         }
 
-        merged.par_iter().map(|r| r.end - r.start + 1).sum()
+        MergedIngredients {
+            fresh: merged,
+            inventory: self.inventory,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+struct MergedIngredients {
+    fresh: Vec<FreshRange>,
+    inventory: Vec<u64>,
+}
+
+impl MergedIngredients {
+    fn count_fresh(&self) -> u64 {
+        self.inventory
+            .par_iter()
+            .filter(|item| {
+                self.fresh
+                    .binary_search_by(|r| {
+                        if **item < r.start {
+                            Ordering::Greater
+                        } else if **item > r.end {
+                            Ordering::Less
+                        } else {
+                            Ordering::Equal
+                        }
+                    })
+                    .is_ok()
+            })
+            .count() as u64
+    }
+
+    fn total_fresh(&self) -> u64 {
+        self.fresh.par_iter().map(|r| r.end - r.start + 1).sum()
     }
 }
 
@@ -101,7 +136,7 @@ mod parsing {
                 fresh: parse_fresh_range_list,
                 _: line_ending,
                 _: line_ending,
-                inventory: parse_inventory_list
+                inventory: parse_inventory_list,
             }
         )
         .parse_next(input)
@@ -197,7 +232,7 @@ mod tests {
     #[case(Ingredients {fresh: vec![FreshRange {start: 10, end: 20}, FreshRange {start: 30, end: 40}, FreshRange {start: 15, end: 35}], ..Default::default()}, 31)]
     #[case(Ingredients {fresh: vec![FreshRange {start: 3, end: 5}, FreshRange {start: 10, end: 14}, FreshRange {start: 16, end: 20}, FreshRange {start: 12, end: 18}], ..Default::default()}, 14)]
     fn test_total_fresh(#[case] inventory: Ingredients, #[case] expected: u64) {
-        let result = inventory.total_fresh();
+        let result = inventory.merge_ranges().total_fresh();
 
         assert_eq!(result, expected);
     }
