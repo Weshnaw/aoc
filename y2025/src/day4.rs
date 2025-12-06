@@ -39,7 +39,7 @@ fn remove_paper(input: &mut Array2<u8>, kernal: &Array2<u8>) -> usize {
         }
     }
 
-    return removed;
+    removed
 }
 
 fn transform_str_to_ndarray(input: &str) -> Array2<u8> {

@@ -7,9 +7,9 @@ edition = "2024"
 itertools = "0.14.0"
 ndarray = { version = "0.17.1", features = ["rayon"] }
 ndarray-conv = "0.6.0"
-nom = "8.0"
 rayon = "1.11"
 tracing = "0.1"
+winnow = "0.7.14"
 
 [dev-dependencies]
 rstest = "0.26.1"
