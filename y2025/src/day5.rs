@@ -1,13 +1,14 @@
 use rayon::prelude::*;
+use tracing::info;
 use winnow::Parser;
 
 pub fn puzzle(input: &str) -> (u64, u64) {
     let input = Ingredients::from_str(input);
 
-    (input.count_fresh(), 0)
+    (input.count_fresh(), input.total_fresh())
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 struct FreshRange {
     start: u64,
     end: u64,
@@ -42,6 +43,25 @@ impl Ingredients {
                     .any(|fresh| **ingredient >= fresh.start && **ingredient <= fresh.end)
             })
             .count() as u64
+    }
+
+    fn total_fresh(&self) -> u64 {
+        let mut fresh = self.fresh.as_slice().to_vec();
+        fresh.sort_by_key(|f| f.start);
+
+        let mut merged: Vec<FreshRange> = Vec::with_capacity(fresh.len());
+
+        for current_fresh in &fresh {
+            match merged.last_mut() {
+                Some(last) if current_fresh.start <= last.end => {
+                    last.end = last.end.max(current_fresh.end);
+                }
+                _ => merged.push(*current_fresh),
+            }
+            info!(?merged);
+        }
+
+        merged.par_iter().map(|r| r.end - r.start + 1).sum()
     }
 }
 
@@ -152,9 +172,35 @@ mod parsing {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
     use test_log::test;
 
     use super::*;
+
+    #[test]
+    #[rstest]
+    #[case(Ingredients {fresh: vec![], ..Default::default()}, 0)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 10, end: 20}], ..Default::default()}, 11)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 10, end: 20}, FreshRange {start: 10, end: 20}], ..Default::default()}, 11)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 10, end: 20}, FreshRange {start:  5, end: 25}], ..Default::default()}, 21)]
+    #[case(Ingredients {fresh: vec![FreshRange {start:  5, end: 25}, FreshRange {start: 10, end: 20}], ..Default::default()}, 21)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 15, end: 25}, FreshRange {start: 10, end: 20}], ..Default::default()}, 16)]
+    #[case(Ingredients {fresh: vec![FreshRange {start:  5, end: 15}, FreshRange {start: 10, end: 20}], ..Default::default()}, 16)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 10, end: 20}, FreshRange {start: 15, end: 25}], ..Default::default()}, 16)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 10, end: 20}, FreshRange {start:  5, end: 15}], ..Default::default()}, 16)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 20, end: 25}, FreshRange {start: 10, end: 20}], ..Default::default()}, 16)]
+    #[case(Ingredients {fresh: vec![FreshRange {start:  5, end: 10}, FreshRange {start: 10, end: 20}], ..Default::default()}, 16)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 10, end: 20}, FreshRange {start: 20, end: 25}], ..Default::default()}, 16)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 10, end: 20}, FreshRange {start:  5, end: 10}], ..Default::default()}, 16)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 10, end: 20}, FreshRange {start: 30, end: 40}], ..Default::default()}, 22)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 30, end: 40}, FreshRange {start: 10, end: 20}], ..Default::default()}, 22)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 10, end: 20}, FreshRange {start: 30, end: 40}, FreshRange {start: 15, end: 35}], ..Default::default()}, 31)]
+    #[case(Ingredients {fresh: vec![FreshRange {start: 3, end: 5}, FreshRange {start: 10, end: 14}, FreshRange {start: 16, end: 20}, FreshRange {start: 12, end: 18}], ..Default::default()}, 14)]
+    fn test_total_fresh(#[case] inventory: Ingredients, #[case] expected: u64) {
+        let result = inventory.total_fresh();
+
+        assert_eq!(result, expected);
+    }
 
     #[test]
     fn test_empty_input() {
@@ -183,6 +229,6 @@ mod tests {
     #[test]
     fn test_input() {
         let result = puzzle(include_str!("day5_input.txt"));
-        assert_eq!(result, (720, 0));
+        assert_eq!(result, (720, 357608232770687));
     }
 }
