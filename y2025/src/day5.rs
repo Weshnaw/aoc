@@ -1,10 +1,10 @@
 use rayon::prelude::*;
 use winnow::Parser;
 
-pub fn puzzle(input: &str) -> u64 {
+pub fn puzzle(input: &str) -> (u64, u64) {
     let input = Ingredients::from_str(input);
 
-    input.count_fresh()
+    (input.count_fresh(), 0)
 }
 
 #[derive(Debug, PartialEq)]
@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn test_empty_input() {
         let result = puzzle("");
-        assert_eq!(result, 0);
+        assert_eq!(result, (0, 0));
     }
 
     #[test]
@@ -177,12 +177,12 @@ mod tests {
 17
 32",
         );
-        assert_eq!(result, 3);
+        assert_eq!(result, (3, 14));
     }
 
     #[test]
     fn test_input() {
         let result = puzzle(include_str!("day5_input.txt"));
-        assert_eq!(result, 720);
+        assert_eq!(result, (720, 0));
     }
 }
