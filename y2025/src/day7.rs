@@ -13,14 +13,8 @@ pub fn puzzle(input: &str) -> (usize, u64) {
 
 fn parse_line(line: &str) -> BitVec {
     let mut tachyon_splitters = bitvec![0; line.len()];
-
-    for idx in line
-        .chars()
-        .enumerate()
-        .filter(|(_, c)| c != &'.')
-        .map(|(idx, _)| idx)
-    {
-        tachyon_splitters.set(idx, true);
+    for (i, c) in line.chars().enumerate() {
+        tachyon_splitters.set(i, c != '.');
     }
 
     debug!("{line} => {tachyon_splitters:015b}");
