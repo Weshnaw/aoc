@@ -1,13 +1,13 @@
 use tracing::info;
 
 #[derive(Debug)]
-struct Accumulator {
+struct Lock {
     current_pos: i64,
     zero_count: usize,
     total_zero_hits: usize,
 }
 
-impl Default for Accumulator {
+impl Default for Lock {
     fn default() -> Self {
         Self {
             current_pos: 50,
@@ -21,30 +21,30 @@ pub fn puzzle(input: &str) -> (usize, usize) {
     let count = input
         .trim()
         .lines()
-        .fold(Accumulator::default(), |mut a, line| {
+        .fold(Lock::default(), |mut lock_state, line| {
             if !line.is_empty() {
                 let distance: usize = line[1..].parse().unwrap();
                 let new_pos: i64 = if line.starts_with("R") {
-                    a.current_pos + (distance as i64 % 100)
+                    lock_state.current_pos + (distance as i64 % 100)
                 } else {
-                    a.current_pos - (distance as i64 % 100)
+                    lock_state.current_pos - (distance as i64 % 100)
                 };
 
-                if new_pos > 100 || (new_pos < 0 && a.current_pos != 0) {
-                    a.total_zero_hits += 1;
+                if new_pos > 100 || (new_pos < 0 && lock_state.current_pos != 0) {
+                    lock_state.total_zero_hits += 1;
                 }
 
-                a.total_zero_hits += distance / 100;
+                lock_state.total_zero_hits += distance / 100;
 
-                a.current_pos = new_pos.rem_euclid(100);
-                if a.current_pos == 0 {
-                    a.zero_count += 1;
-                    a.total_zero_hits += 1;
+                lock_state.current_pos = new_pos.rem_euclid(100);
+                if lock_state.current_pos == 0 {
+                    lock_state.zero_count += 1;
+                    lock_state.total_zero_hits += 1;
                 }
 
-                info!("line: {line:>3}: {a:?}");
+                info!("line: {line:>3}: {lock_state:?}");
             }
-            a
+            lock_state
         });
     (count.zero_count, count.total_zero_hits)
 }
