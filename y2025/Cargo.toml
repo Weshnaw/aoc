@@ -8,6 +8,7 @@ bitvec = "1.0.1"
 itertools = "0.14.0"
 ndarray = { version = "0.17.1", features = ["rayon"] }
 ndarray-conv = "0.6.0"
+rangemap = "1.7.0"
 rayon = "1.11"
 tracing = "0.1"
 transpose = "0.2.3"
