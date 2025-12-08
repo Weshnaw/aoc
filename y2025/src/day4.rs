@@ -72,7 +72,8 @@ mod tests {
     #[test]
     fn test_example_input() {
         let result = puzzle(
-            "..@@.@@@@.
+            "\
+..@@.@@@@.
 @@@.@.@.@@
 @@@@@.@.@@
 @.@@@@..@.
