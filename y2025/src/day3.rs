@@ -1,53 +1,47 @@
 use rayon::prelude::*;
-use tracing::{debug, trace};
+use tracing::{debug, info};
 
 fn calculate_joltage<const N: usize>(input: &str) -> u64 {
-    let input = input.trim();
-    if input.is_empty() {
-        return 0;
+    let bytes = input.trim().as_bytes();
+    if bytes.len() < N {
+        return byte_digts_to_number(&bytes);
     }
 
-    let digits = input.as_bytes().iter().rev().enumerate().fold(
-        [0u64; N],
-        |mut current_digits, (idx, current_character)| {
-            let num = (current_character & 0x0F) as u64;
+    let mut digits = [0u8; N];
+    let mut previous_digit_idx: usize = 0;
+    info!(?bytes);
+    for idx in 0..N {
+        debug!(?idx, ?digits, ?previous_digit_idx);
+        let slice_end = bytes.len() - (N - idx - 1);
+        let slice = &bytes[previous_digit_idx..slice_end];
+        let (digit_idx, max) = slice.iter().enumerate().rev().max_by_key(|n| n.1).unwrap();
+        debug!(?slice, ?digit_idx, ?max);
+        if digit_idx == (slice.len() - 1) {
+            info!("Skipping rest");
+            digits[idx..].copy_from_slice(&bytes[previous_digit_idx + digit_idx..]);
+            debug!(?digits);
+            break;
+        }
+        previous_digit_idx += digit_idx + 1;
+        digits[idx] = *max;
+    }
 
-            if idx < N {
-                current_digits[idx] = num;
-            } else {
-                debug!("Cascading {num} with {current_digits:?}");
-                cascading_update(&mut current_digits, num);
-            }
+    let num = byte_digts_to_number(&digits);
 
-            current_digits
-        },
-    );
-
-    let num: u64 = digits
-        .iter()
-        .enumerate()
-        .map(|(idx, digit)| 10u64.pow(idx as u32) * digit)
-        .sum();
-
-    debug!("'{input}' -> '{num}");
+    info!("'{input}' -> '{num}");
     num
 }
 
-fn cascading_update<const N: usize>(digits: &mut [u64; N], mut num: u64) {
-    trace!("Cascade: num={num} len={}, digits={digits:?}", digits.len());
-    for i in (0..digits.len()).rev() {
-        trace!(i, num);
-        if digits[i] <= num {
-            trace!("swapped at idx={i} num={num} digit={}", digits[i]);
-            (digits[i], num) = (num, digits[i]);
-        } else {
-            break;
-        }
-    }
-    trace!(
-        "Cascade result: num={num} len={}, digits={digits:?}",
-        digits.len()
-    );
+fn byte_digts_to_number(digits: &[u8]) -> u64 {
+    digits
+        .iter()
+        .rev()
+        .enumerate()
+        .map(|(idx, digit)| {
+            let num = (digit & 0x0F) as u64;
+            10u64.pow(idx as u32) * num
+        })
+        .sum()
 }
 
 fn calculate_both(input: &str) -> (u64, u64) {
@@ -81,8 +75,20 @@ mod tests {
     #[case("999999999999998", 99)]
     #[case("11", 11)]
     #[case("1", 1)]
-    fn test_calculate_joltage(#[case] input: &str, #[case] expected: u64) {
+    fn test_calculate_joltage_2(#[case] input: &str, #[case] expected: u64) {
         assert_eq!(calculate_joltage::<2>(input), expected);
+    }
+    #[test]
+    #[rstest]
+    #[case("987654321111111", 987654321111)]
+    #[case("811111111111119", 811111111119)]
+    #[case("234234234234278", 434234234278)]
+    #[case("818181911112111", 888911112111)]
+    #[case("999999999999998", 999999999999)]
+    #[case("11", 11)]
+    #[case("1", 1)]
+    fn test_calculate_joltage_12(#[case] input: &str, #[case] expected: u64) {
+        assert_eq!(calculate_joltage::<12>(input), expected);
     }
 
     #[test]
