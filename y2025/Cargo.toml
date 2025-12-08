@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 bitvec = "1.0.1"
+glam = "0.30.9"
 itertools = "0.14.0"
 ndarray = { version = "0.17.1", features = ["rayon"] }
 ndarray-conv = "0.6.0"

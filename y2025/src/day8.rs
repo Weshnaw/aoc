@@ -1,5 +1,85 @@
-pub fn puzzle(_input: &str) -> (u64, u64) {
-    todo!("puzzle");
+use std::{cmp::Ordering, collections::HashSet};
+
+use glam::Vec3;
+use itertools::Itertools;
+use tracing::info;
+
+pub fn puzzle(input: &str, connection_count: usize) -> (usize, u64) {
+    let input = parse(input);
+
+    let combinations = (0..input.len())
+        .tuple_combinations()
+        .sorted_by(|(a0, a1), (b0, b1)| {
+            order_by_distance(&(&input[*a0], &input[*a1]), &(&input[*b0], &input[*b1]))
+        });
+
+    let mut connections: Vec<HashSet<usize>> = Vec::new();
+    for (junction_a, junction_b) in combinations.take(connection_count) {
+        let existing_connections: Vec<_> = connections
+            .iter()
+            .positions(|conn| conn.contains(&junction_a) || conn.contains(&junction_b))
+            .collect();
+
+        match existing_connections.as_slice() {
+            [idx] => {
+                if !(connections[*idx].contains(&junction_a)
+                    && connections[*idx].contains(&junction_b))
+                {
+                    connections[*idx].insert(junction_a);
+                    connections[*idx].insert(junction_b);
+                }
+            }
+            [idx_a, idx_b] => {
+                let (idx_a, idx_b) = if idx_a < idx_b {
+                    (idx_a, idx_b)
+                } else {
+                    (idx_b, idx_a)
+                };
+                let conn_b = connections.remove(*idx_b);
+                connections[*idx_a].extend(conn_b);
+            }
+            _ => {
+                connections.push(HashSet::from([junction_a, junction_b]));
+            }
+        }
+    }
+
+    info!(?connections);
+
+    for conn in &connections {
+        let conn: Vec<_> = conn.iter().map(|idx| input[*idx]).collect();
+        info!(?conn);
+    }
+
+    (
+        connections
+            .iter()
+            .map(|con| con.len())
+            .sorted()
+            .rev()
+            .take(3)
+            .product(),
+        0,
+    )
+}
+
+fn parse(input: &str) -> Vec<Vec3> {
+    input
+        .lines()
+        .map(|line| {
+            let numbers: Vec<_> = line
+                .split(',')
+                .map(|digits| digits.parse::<u64>().unwrap() as f32)
+                .collect();
+            Vec3::from_slice(&numbers)
+        })
+        .collect()
+}
+
+fn order_by_distance(a: &(&Vec3, &Vec3), b: &(&Vec3, &Vec3)) -> Ordering {
+    a.0.distance(*a.1)
+        .partial_cmp(&b.0.distance(*b.1))
+        .unwrap_or(std::cmp::Ordering::Less)
 }
 
 #[cfg(test)]
@@ -9,14 +89,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_empty_input() {
-        let result = puzzle("");
-        assert_eq!(result, (0, 0));
-    }
-
-    #[test]
     fn test_example_input() {
-        let result = puzzle("\
+        let result = puzzle(
+            "\
 162,817,812
 57,618,57
 906,360,560
@@ -36,13 +111,15 @@ mod tests {
 941,993,340
 862,61,35
 984,92,344
-425,690,689");
+425,690,689",
+            10,
+        );
         assert_eq!(result, (40, 0));
     }
 
     #[test]
     fn test_input() {
-        let result = puzzle(include_str!("day8_input.txt"));
-        assert_eq!(result, (0, 0));
+        let result = puzzle(include_str!("day8_input.txt"), 1_000);
+        assert_eq!(result, (129564, 0));
     }
 }

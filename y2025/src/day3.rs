@@ -4,7 +4,7 @@ use tracing::{debug, info};
 fn calculate_joltage<const N: usize>(input: &str) -> u64 {
     let bytes = input.trim().as_bytes();
     if bytes.len() < N {
-        return byte_digts_to_number(&bytes);
+        return byte_digts_to_number(bytes);
     }
 
     let mut digits = [0u8; N];
