@@ -42,8 +42,7 @@ fn solve_part2(input: &str) -> u64 {
     let operators: Vec<_> = operator_line.split_ascii_whitespace().collect();
     let width = operator_line.len();
 
-    let input = &input[..(input.len() - width)]
-        .replace(['\n', '\r'], "");
+    let input = &input[..(input.len() - width)].replace(['\n', '\r'], "");
     let height = input.len() / width;
 
     debug!(?input, ?height, ?width);
