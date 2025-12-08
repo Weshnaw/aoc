@@ -10,6 +10,7 @@ ndarray = { version = "0.17.1", features = ["rayon"] }
 ndarray-conv = "0.6.0"
 rayon = "1.11"
 tracing = "0.1"
+transpose = "0.2.3"
 winnow = "0.7.14"
 
 [dev-dependencies]
