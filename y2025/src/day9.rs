@@ -1,7 +1,7 @@
-use glam::I64Vec2;
+use glam::U64Vec2;
 use itertools::Itertools;
 
-pub fn part1(input: &str) -> i64 {
+pub fn part1(input: &str) -> u64 {
     let red_tiles = parse(input);
 
     red_tiles
@@ -12,22 +12,22 @@ pub fn part1(input: &str) -> i64 {
         .unwrap_or_default()
 }
 
-fn parse(input: &str) -> Vec<I64Vec2> {
+fn parse(input: &str) -> Vec<U64Vec2> {
     input
         .lines()
         .map(|l| {
             let (x, y) = l.split_once(',').unwrap();
-            I64Vec2::new(x.parse().unwrap(), y.parse().unwrap())
+            U64Vec2::new(x.parse().unwrap(), y.parse().unwrap())
         })
         .collect()
 }
 
-fn calc_area((a, b): (&I64Vec2, &I64Vec2)) -> i64 {
-    let diff = (a.max(*b) - a.min(*b)) + 1;
+fn calc_area((corner_a, corner_b): (&U64Vec2, &U64Vec2)) -> u64 {
+    let diff = (corner_a.max(*corner_b) - corner_a.min(*corner_b)) + 1;
     diff.x * diff.y
 }
 
-pub fn part2(input: &str) -> i64 {
+pub fn part2(input: &str) -> u64 {
     let red_tiles = parse(input);
 
     let lines: Vec<(_, _)> = red_tiles.iter().circular_tuple_windows().collect();
@@ -43,20 +43,27 @@ pub fn part2(input: &str) -> i64 {
         .unwrap_or_default()
 }
 
-fn exists_in_tiles(tiles: (&I64Vec2, &I64Vec2), lines: &[(&I64Vec2, &I64Vec2)]) -> bool {
-    lines.iter().all(|line| check_rectangle(tiles, *line))
+// Note: This makes a few assumptions about the ouput, so could fail a _technically_ possible edge case
+// a more perfect implementation would do additional intersection tests with the edges and lines
+fn exists_in_tiles(corner_tiles: (&U64Vec2, &U64Vec2), lines: &[(&U64Vec2, &U64Vec2)]) -> bool {
+    lines
+        .iter()
+        .all(|line| bounding_box_check(corner_tiles, *line))
 }
 
-fn check_rectangle((a, b): (&I64Vec2, &I64Vec2), (start, end): (&I64Vec2, &I64Vec2)) -> bool {
-    let max_tile = a.max(*b);
-    let min_tile = a.min(*b);
-    let max_line = start.max(*end);
-    let min_line = start.min(*end);
+fn bounding_box_check(
+    (tile_a, tile_b): (&U64Vec2, &U64Vec2),
+    (line_start, line_end): (&U64Vec2, &U64Vec2),
+) -> bool {
+    let max_tile_coords = tile_a.max(*tile_b);
+    let min_tile_coords = tile_a.min(*tile_b);
+    let max_line_coords = line_start.max(*line_end);
+    let min_line_coords = line_start.min(*line_end);
 
-    let left = max_tile.x <= min_line.x;
-    let right = min_tile.x >= max_line.x;
-    let top = max_tile.y <= min_line.y;
-    let bottom = min_tile.y >= max_line.y;
+    let left = max_tile_coords.x <= min_line_coords.x;
+    let right = min_tile_coords.x >= max_line_coords.x;
+    let top = max_tile_coords.y <= min_line_coords.y;
+    let bottom = min_tile_coords.y >= max_line_coords.y;
 
     left || right || top || bottom
 }
