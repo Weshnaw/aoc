@@ -1,5 +1,6 @@
-use std::{cmp::Ordering, collections::HashSet};
+use std::cmp::Ordering;
 
+use bitvec::prelude::*;
 use glam::Vec3;
 use itertools::Itertools;
 use tracing::info;
@@ -7,26 +8,45 @@ use tracing::info;
 pub fn puzzle_1(input: &str, connection_count: usize) -> usize {
     let input = parse(input);
 
-    let combinations = (0..input.len())
+    let combinations = create_combinations(&input);
+
+    let connections = create_connections(combinations.take(connection_count), input.len());
+
+    info!(?connections);
+
+    connections
+        .iter()
+        .map(|con| con.count_ones())
+        .sorted()
+        .rev()
+        .take(3)
+        .product()
+}
+
+fn create_combinations(input: &[Vec3]) -> impl Iterator<Item = (usize, usize)> {
+    (0..input.len())
         .tuple_combinations()
         .sorted_by(|(a0, a1), (b0, b1)| {
             order_by_distance(&(&input[*a0], &input[*a1]), &(&input[*b0], &input[*b1]))
-        });
+        })
+}
 
-    let mut connections: Vec<HashSet<usize>> = Vec::new();
-    for (junction_a, junction_b) in combinations.take(connection_count) {
+fn create_connections(
+    combinations: impl Iterator<Item = (usize, usize)>,
+    input_size: usize,
+) -> Vec<BitVec> {
+    let mut connections: Vec<BitVec> = Vec::new();
+    for (junction_a, junction_b) in combinations {
         let existing_connections: Vec<_> = connections
             .iter()
-            .positions(|conn| conn.contains(&junction_a) || conn.contains(&junction_b))
+            .positions(|conn| conn[junction_a] || conn[junction_b])
             .collect();
 
         match existing_connections.as_slice() {
             [idx] => {
-                if !(connections[*idx].contains(&junction_a)
-                    && connections[*idx].contains(&junction_b))
-                {
-                    connections[*idx].insert(junction_a);
-                    connections[*idx].insert(junction_b);
+                if !(connections[*idx][junction_a] && connections[*idx][junction_b]) {
+                    connections[*idx].set(junction_a, true);
+                    connections[*idx].set(junction_b, true);
                 }
             }
             [idx_a, idx_b] => {
@@ -36,54 +56,40 @@ pub fn puzzle_1(input: &str, connection_count: usize) -> usize {
                     (idx_b, idx_a)
                 };
                 let conn_b = connections.remove(*idx_b);
-                connections[*idx_a].extend(conn_b);
+                connections[*idx_a] |= conn_b;
             }
             _ => {
-                connections.push(HashSet::from([junction_a, junction_b]));
+                let mut bits = bitvec!(0; input_size);
+                bits.set(junction_a, true);
+                bits.set(junction_b, true);
+                connections.push(bits);
             }
         }
     }
 
-    info!(?connections);
-
-    for conn in &connections {
-        let conn: Vec<_> = conn.iter().map(|idx| input[*idx]).collect();
-        info!(?conn);
-    }
-
     connections
-        .iter()
-        .map(|con| con.len())
-        .sorted()
-        .rev()
-        .take(3)
-        .product()
 }
 
 pub fn puzzle_2(input: &str) -> f32 {
     let input = parse(input);
 
-    let combinations = (0..input.len())
-        .tuple_combinations()
-        .sorted_by(|(a0, a1), (b0, b1)| {
-            order_by_distance(&(&input[*a0], &input[*a1]), &(&input[*b0], &input[*b1]))
-        });
+    let combinations = create_combinations(&input);
 
-    let mut connections: Vec<HashSet<usize>> = Vec::new();
+    let input_size = input.len();
+
+    let mut connections: Vec<BitVec> = Vec::new();
     for (junction_a, junction_b) in combinations {
         let existing_connections: Vec<_> = connections
             .iter()
-            .positions(|conn| conn.contains(&junction_a) || conn.contains(&junction_b))
+            .positions(|conn| conn[junction_a] || conn[junction_b])
             .collect();
 
-        let length = match existing_connections.as_slice() {
+        let junctions = match existing_connections.as_slice() {
             [idx] => {
-                if !(connections[*idx].contains(&junction_a)
-                    && connections[*idx].contains(&junction_b))
-                {
-                    connections[*idx].insert(junction_a);
-                    connections[*idx].insert(junction_b);
-                    connections[*idx].len()
+                if !(connections[*idx][junction_a] && connections[*idx][junction_b]) {
+                    connections[*idx].set(junction_a, true);
+                    connections[*idx].set(junction_b, true);
+                    connections[*idx].count_ones()
                 } else {
                     0
                 }
@@ -95,16 +101,19 @@ pub fn puzzle_2(input: &str) -> f32 {
                     (idx_b, idx_a)
                 };
                 let conn_b = connections.remove(*idx_b);
-                connections[*idx_a].extend(conn_b);
-                connections[*idx_a].len()
+                connections[*idx_a] |= conn_b;
+                connections[*idx_a].count_ones()
             }
             _ => {
-                connections.push(HashSet::from([junction_a, junction_b]));
+                let mut bits = bitvec!(0; input_size);
+                bits.set(junction_a, true);
+                bits.set(junction_b, true);
+                connections.push(bits);
                 2
             }
         };
 
-        if length == input.len() {
+        if junctions == input_size {
             return input[junction_a].x * input[junction_b].x;
         }
     }
