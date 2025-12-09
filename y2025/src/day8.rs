@@ -135,8 +135,8 @@ fn parse(input: &str) -> Vec<Vec3> {
 }
 
 fn order_by_distance(a: &(&Vec3, &Vec3), b: &(&Vec3, &Vec3)) -> Ordering {
-    a.0.distance(*a.1)
-        .partial_cmp(&b.0.distance(*b.1))
+    a.0.distance_squared(*a.1)
+        .partial_cmp(&b.0.distance_squared(*b.1))
         .unwrap_or(std::cmp::Ordering::Less)
 }
 
