@@ -8,15 +8,19 @@ mod tests {
 
     use super::*;
 
+    const EXAMPLE: &str = "\
+";
+    const INPUT: &str = include_str!("day0_input.txt");
+
     #[test]
     fn test_example_input() {
-        let result = puzzle("");
+        let result = puzzle(EXAMPLE);
         assert_eq!(result, (0, 0));
     }
 
     #[test]
     fn test_input() {
-        let result = puzzle(include_str!("day0_input.txt"));
+        let result = puzzle(INPUT);
         assert_eq!(result, (0, 0));
     }
 }
