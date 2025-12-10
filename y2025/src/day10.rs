@@ -1,31 +1,61 @@
+use std::collections::HashSet;
+
 use crate::day10::parsing::parse_full_input;
 use rayon::prelude::*;
+use tracing::info;
 use winnow::Parser;
 
 #[derive(Debug, PartialEq)]
 struct Machine {
-    current_state: u64,
     desired_state: u64,
     button_masks: Vec<u64>,
     joltage_requirements: Vec<u64>,
 }
 
 pub fn puzzle(input: &str) -> (u64, u64) {
-    let input = parse_full_input.parse(input).unwrap();
+    let (left_over, input) = parse_full_input.parse_peek(input).unwrap();
+
+    info!(?left_over);
 
     (input.par_iter().map(solve_single_machine).sum(), 0)
 }
 
-fn solve_single_machine(_input: &Machine) -> u64 {
-    todo!()
+fn solve_single_machine(machine: &Machine) -> u64 {
+    let mut found: HashSet<u64> = HashSet::new();
+    found.insert(0);
+
+    let mut count = 0;
+    loop {
+        if found.contains(&machine.desired_state) {
+            break;
+        }
+
+        found = found
+            .iter()
+            .flat_map(|found| {
+                machine
+                    .button_masks
+                    .iter()
+                    .map(|button| push_button(*found, *button))
+            })
+            .collect();
+
+        count += 1;
+    }
+
+    count
+}
+
+fn push_button(state: u64, button_mask: u64) -> u64 {
+    state ^ button_mask
 }
 
 mod parsing {
     use super::*;
 
     use winnow::{
-        ascii::{digit1, newline, space0, space1},
-        combinator::{alt, delimited, empty, repeat, separated, seq},
+        ascii::{digit1, line_ending, space0, space1},
+        combinator::{alt, delimited, repeat, separated, seq},
     };
 
     fn parse_single_light(input: &mut &str) -> winnow::Result<bool> {
@@ -73,7 +103,6 @@ mod parsing {
     pub fn parse_line(input: &mut &str) -> winnow::Result<Machine> {
         seq!(
             Machine {
-                current_state: empty.value(0u64),
                 desired_state: parse_desired_state,
                 _: space0,
                 button_masks: parse_button_masks,
@@ -85,7 +114,7 @@ mod parsing {
     }
 
     pub fn parse_full_input(input: &mut &str) -> winnow::Result<Vec<Machine>> {
-        separated(0.., parse_line, newline).parse_next(input)
+        separated(0.., parse_line, line_ending).parse_next(input)
     }
 
     #[cfg(test)]
@@ -125,7 +154,6 @@ mod parsing {
         #[test]
         #[rstest]
         #[case("[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}", Machine {
-            current_state: 0,
             desired_state: 0b0110,
             button_masks: vec![0b1000, 0b1010, 0b100, 0b1100, 0b101, 0b11],
             joltage_requirements: vec![3, 5, 4, 7]
