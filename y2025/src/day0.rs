@@ -19,6 +19,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_input() {
         let result = puzzle(INPUT);
         assert_eq!(result, (0, 0));

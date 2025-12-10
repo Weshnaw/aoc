@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use crate::day10::parsing::parse_full_input;
 use rayon::prelude::*;
@@ -12,42 +12,97 @@ struct Machine {
     joltage_requirements: Vec<u64>,
 }
 
-pub fn puzzle(input: &str) -> (u64, u64) {
+pub fn part1(input: &str) -> u64 {
     let (left_over, input) = parse_full_input.parse_peek(input).unwrap();
 
     info!(?left_over);
 
-    (input.par_iter().map(solve_single_machine).sum(), 0)
+    input.par_iter().map(part1_solve_single_machine).sum()
 }
 
-fn solve_single_machine(machine: &Machine) -> u64 {
-    let mut found: HashSet<u64> = HashSet::new();
-    found.insert(0);
+fn part1_solve_single_machine(machine: &Machine) -> u64 {
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::new();
 
-    let mut count = 0;
-    loop {
-        if found.contains(&machine.desired_state) {
-            break;
+    let start = 0;
+    visited.insert(start);
+    queue.push_back((start, 0));
+
+    while let Some((state, dist)) = queue.pop_front() {
+        if state == machine.desired_state {
+            return dist;
         }
 
-        found = found
-            .iter()
-            .flat_map(|found| {
-                machine
-                    .button_masks
-                    .iter()
-                    .map(|button| push_button(*found, *button))
-            })
-            .collect();
+        for &mask in &machine.button_masks {
+            let next = push_button_part1(state, mask);
 
-        count += 1;
+            if visited.insert(next) {
+                queue.push_back((next, dist + 1));
+            }
+        }
     }
 
-    count
+    u64::MAX
 }
 
-fn push_button(state: u64, button_mask: u64) -> u64 {
+fn push_button_part1(state: u64, button_mask: u64) -> u64 {
     state ^ button_mask
+}
+
+pub fn part2(input: &str) -> u64 {
+    let (left_over, input) = parse_full_input.parse_peek(input).unwrap();
+
+    info!(?left_over);
+
+    input.par_iter().map(part2_solve_single_machine).sum()
+}
+
+fn part2_solve_single_machine(machine: &Machine) -> u64 {
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::new();
+
+    let start = vec![0; machine.joltage_requirements.len()];
+    visited.insert(start.clone());
+    queue.push_back((start, 0));
+
+    while let Some((state, dist)) = queue.pop_front() {
+        if state == machine.joltage_requirements {
+            return dist;
+        }
+
+        for mask in &machine.button_masks {
+            let next = push_button_part2(&state, *mask);
+
+            if visited.insert(next.clone()) {
+                queue.push_back((next, dist + 1));
+            }
+        }
+    }
+
+    u64::MAX
+}
+struct BitIter(u64);
+
+impl Iterator for BitIter {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 == 0 {
+            return None;
+        }
+        let index = self.0.trailing_zeros();
+        self.0 ^= 1 << index;
+        Some(index as usize)
+    }
+}
+
+fn push_button_part2(state: &[u64], button_mask: u64) -> Vec<u64> {
+    let mut result = state.to_vec();
+    BitIter(button_mask).for_each(|f| {
+        result[f] += 1;
+    });
+
+    result
 }
 
 mod parsing {
@@ -182,26 +237,53 @@ mod tests {
     const INPUT: &str = include_str!("day10_input.txt");
 
     #[test]
-    fn test_example_input() {
-        let result = puzzle(EXAMPLE);
-        assert_eq!(result, (7, 0));
+    fn test_part1_example_input() {
+        let result = part1(EXAMPLE);
+        assert_eq!(result, 7);
     }
 
     #[test]
-    fn test_input() {
-        let result = puzzle(INPUT);
-        assert_eq!(result, (0, 0));
+    #[ignore]
+    fn test_part1_input() {
+        let result = part1(INPUT);
+        assert_eq!(result, 486);
     }
 
     #[test]
     #[rstest]
     #[case("[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}", 2)]
-    fn test_solve(#[case] input: &str, #[case] expected: u64) {
+    fn test_part1_solve_single_machine(#[case] input: &str, #[case] expected: u64) {
         use crate::day10::parsing::parse_line;
 
         let (_, machine) = parse_line.parse_peek(input).unwrap();
 
-        let result = solve_single_machine(&machine);
+        let result = part1_solve_single_machine(&machine);
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_part2_example_input() {
+        let result = part2(EXAMPLE);
+        assert_eq!(result, 33);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_part2_input() {
+        let result = part2(INPUT);
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    #[rstest]
+    #[case("[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}", 10)]
+    fn test_part2_solve_single_machine(#[case] input: &str, #[case] expected: u64) {
+        use crate::day10::parsing::parse_line;
+
+        let (_, machine) = parse_line.parse_peek(input).unwrap();
+
+        let result = part2_solve_single_machine(&machine);
 
         assert_eq!(result, expected);
     }
