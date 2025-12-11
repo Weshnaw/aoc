@@ -59,7 +59,7 @@ fn part2_solve_single_machine(machine: &Machine) -> u64 {
         .collect();
 
     let dim = target.len();
-    let available_actions: Vec<Vec<u64>> = machine
+    let buttons: Vec<Vec<u64>> = machine
         .button_masks
         .iter()
         .map(|button| {
@@ -71,33 +71,32 @@ fn part2_solve_single_machine(machine: &Machine) -> u64 {
         })
         .collect();
 
-    let actions_taken: Vec<_> = (0..available_actions.len())
+    let actions_taken: Vec<_> = (0..buttons.len())
         .map(|action| {
             let name = format!("x{}", action);
-            let vars = Int::new_const(name);
-            // constrains steps so there can't be a negative number of actions taken for a given button
-            optimizer.assert(&vars.ge(Int::from_u64(0)));
-            vars
+            // parameter we are solving for with z3 (i.e. what new_const implies)
+            let button_presses = Int::new_const(name);
+            // constrains steps so there can't be a negative number of button presses
+            optimizer.assert(&button_presses.ge(Int::from_u64(0)));
+            button_presses
         })
         .collect();
 
     // sets the constraint that the current state == target state
     target.iter().enumerate().for_each(|(joltage_idx, target)| {
         // calculates the joltage for a given idx by suming up all the previous actions taken
-        let current = available_actions.iter().enumerate().fold(
-            Int::from_u64(0),
-            |acc, (action_idx, action)| {
-                acc + &actions_taken[action_idx] * &Int::from_u64(action[joltage_idx])
-            },
-        );
+        let current =
+            buttons
+                .iter()
+                .enumerate()
+                .fold(Int::from_u64(0), |acc, (action_idx, action)| {
+                    acc + &actions_taken[action_idx] * &Int::from_u64(action[joltage_idx])
+                });
 
         optimizer.assert(&current.eq(target));
     });
 
-    // sums the number of times each button was pressed
-    let total_actions_taken = actions_taken
-        .iter()
-        .fold(Int::from_u64(0), |acc, action_count| &acc + action_count);
+    let total_actions_taken = actions_taken.iter().sum::<Int>();
     optimizer.minimize(&total_actions_taken);
 
     match optimizer.check(&[]) {
