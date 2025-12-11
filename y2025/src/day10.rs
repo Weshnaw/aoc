@@ -1,8 +1,9 @@
 use crate::day10::parsing::parse_full_input;
-use pathfinding::prelude::dijkstra;
+use pathfinding::prelude::*;
 use rayon::prelude::*;
 use tracing::info;
 use winnow::Parser;
+use z3::{Optimize, ast::Int};
 
 #[derive(Debug, PartialEq)]
 struct Machine {
@@ -49,14 +50,64 @@ pub fn part2(input: &str) -> u64 {
 }
 
 fn part2_solve_single_machine(machine: &Machine) -> u64 {
-    let res = dijkstra(
-        &vec![0; machine.joltage_requirements.len()],
-        |state| press_buttons_part2(state.clone(), &machine.button_masks),
-        |state| state == &machine.joltage_requirements,
-    )
-    .unwrap();
+    let optimizer = Optimize::new();
 
-    res.1 as u64
+    let target: Vec<_> = machine
+        .joltage_requirements
+        .iter()
+        .map(|joltage| Int::from_u64(*joltage))
+        .collect();
+
+    let dim = target.len();
+    let available_actions: Vec<Vec<u64>> = machine
+        .button_masks
+        .iter()
+        .map(|button| {
+            let mut action = vec![0; dim];
+            for idx in BitIter(*button) {
+                action[idx] = 1;
+            }
+            action
+        })
+        .collect();
+
+    let actions_taken: Vec<_> = (0..available_actions.len())
+        .map(|action| {
+            let name = format!("x{}", action);
+            let vars = Int::new_const(name);
+            // constrains steps so there can't be a negative number of actions taken for a given button
+            optimizer.assert(&vars.ge(Int::from_u64(0)));
+            vars
+        })
+        .collect();
+
+    // sets the constraint that the current state >= target state
+    target.iter().enumerate().for_each(|(joltage_idx, target)| {
+        // calculates the joltage for a given idx by suming up all the previous actions taken
+        let current = available_actions.iter().enumerate().fold(
+            Int::from_u64(0),
+            |acc, (action_idx, action)| {
+                acc + &actions_taken[action_idx] * &Int::from_u64(action[joltage_idx])
+            },
+        );
+
+        optimizer.assert(&current.ge(target));
+    });
+
+    // sums the individual action counts
+    let total_actions_taken = actions_taken
+        .iter()
+        .fold(Int::from_u64(0), |acc, action_count| &acc + action_count);
+    optimizer.minimize(&total_actions_taken);
+
+    match optimizer.check(&[]) {
+        z3::SatResult::Sat => {
+            let model = optimizer.get_model().unwrap();
+            let result = model.eval(&total_actions_taken, true).unwrap();
+            result.as_u64().unwrap()
+        }
+        _ => u64::MAX,
+    }
 }
 struct BitIter(u64);
 
@@ -71,21 +122,6 @@ impl Iterator for BitIter {
         self.0 ^= 1 << index;
         Some(index as usize)
     }
-}
-
-fn press_buttons_part2(state: Vec<u64>, buttons: &[u64]) -> impl Iterator<Item = (Vec<u64>, u32)> {
-    buttons
-        .iter()
-        .map(move |button| (push_button_part2(&state, *button), 1))
-}
-
-fn push_button_part2(state: &[u64], button_mask: u64) -> Vec<u64> {
-    let mut result = state.to_vec();
-    BitIter(button_mask).for_each(|f| {
-        result[f] += 1;
-    });
-
-    result
 }
 
 mod parsing {
@@ -226,7 +262,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_part1_input() {
         let result = part1(INPUT);
         assert_eq!(result, 486);
@@ -255,12 +290,12 @@ mod tests {
     #[ignore]
     fn test_part2_input() {
         let result = part2(INPUT);
-        assert_eq!(result, 0);
+        assert_eq!(result, 17820);
     }
 
     #[test]
     #[rstest]
-    #[case("[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}", 10)]
+    #[case("[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}", 101)]
     fn test_part2_solve_single_machine(#[case] input: &str, #[case] expected: u64) {
         use crate::day10::parsing::parse_line;
 

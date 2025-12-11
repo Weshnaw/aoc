@@ -15,6 +15,7 @@ rayon = "1.11"
 tracing = "0.1"
 transpose = "0.2.3"
 winnow = "0.7.14"
+z3 = { version = "0.19.6", features = ["gh-release"] }
 
 [dev-dependencies]
 rstest = "0.26.1"
