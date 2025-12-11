@@ -52,62 +52,49 @@ pub fn part2(input: &str) -> u64 {
 fn part2_solve_single_machine(machine: &Machine) -> u64 {
     let optimizer = Optimize::new();
 
-    let target: Vec<_> = machine
+    let (total_presses, state) = machine.button_masks.iter().enumerate().fold(
+        (
+            Int::from_u64(0),
+            vec![Int::from_u64(0); machine.joltage_requirements.len()],
+        ),
+        |(mut total, mut state), (button_idx, button)| {
+            // parameter we are solving for with z3 (i.e. what new_const implies)
+            let name = format!("button_{}", button_idx);
+            let button_presses = Int::new_const(name);
+
+            // constrain button presses to a positive value
+            optimizer.assert(&button_presses.ge(Int::from_u64(0)));
+
+            // accumulating the actions taken
+            total += &button_presses;
+
+            for idx in BitIter(*button) {
+                state[idx] += &button_presses;
+            }
+
+            (total, state)
+        },
+    );
+
+    // constrains the current state to match the target state
+    machine
         .joltage_requirements
         .iter()
-        .map(|joltage| Int::from_u64(*joltage))
-        .collect();
+        .zip(state.iter())
+        .for_each(|(target, current)| optimizer.assert(&(Int::from_u64(*target).eq(current))));
 
-    let dim = target.len();
-    let buttons: Vec<Vec<u64>> = machine
-        .button_masks
-        .iter()
-        .map(|button| {
-            let mut action = vec![0; dim];
-            for idx in BitIter(*button) {
-                action[idx] = 1;
-            }
-            action
-        })
-        .collect();
-
-    let actions_taken: Vec<_> = (0..buttons.len())
-        .map(|action| {
-            let name = format!("x{}", action);
-            // parameter we are solving for with z3 (i.e. what new_const implies)
-            let button_presses = Int::new_const(name);
-            // constrains steps so there can't be a negative number of button presses
-            optimizer.assert(&button_presses.ge(Int::from_u64(0)));
-            button_presses
-        })
-        .collect();
-
-    // sets the constraint that the current state == target state
-    target.iter().enumerate().for_each(|(joltage_idx, target)| {
-        // calculates the joltage for a given idx by suming up all the previous actions taken
-        let current =
-            buttons
-                .iter()
-                .enumerate()
-                .fold(Int::from_u64(0), |acc, (action_idx, action)| {
-                    acc + &actions_taken[action_idx] * &Int::from_u64(action[joltage_idx])
-                });
-
-        optimizer.assert(&current.eq(target));
-    });
-
-    let total_actions_taken = actions_taken.iter().sum::<Int>();
-    optimizer.minimize(&total_actions_taken);
+    // minimize total button presses
+    optimizer.minimize(&total_presses);
 
     match optimizer.check(&[]) {
         z3::SatResult::Sat => {
             let model = optimizer.get_model().unwrap();
-            let result = model.eval(&total_actions_taken, true).unwrap();
-            result.as_u64().unwrap()
+            model.eval(&total_presses, true).unwrap().as_u64().unwrap()
         }
         _ => u64::MAX,
     }
 }
+
 struct BitIter(u64);
 
 impl Iterator for BitIter {
