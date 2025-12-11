@@ -81,7 +81,7 @@ fn part2_solve_single_machine(machine: &Machine) -> u64 {
         })
         .collect();
 
-    // sets the constraint that the current state >= target state
+    // sets the constraint that the current state == target state
     target.iter().enumerate().for_each(|(joltage_idx, target)| {
         // calculates the joltage for a given idx by suming up all the previous actions taken
         let current = available_actions.iter().enumerate().fold(
@@ -91,7 +91,7 @@ fn part2_solve_single_machine(machine: &Machine) -> u64 {
             },
         );
 
-        optimizer.assert(&current.ge(target));
+        optimizer.assert(&current.eq(target));
     });
 
     // sums the number of times each button was pressed
@@ -287,7 +287,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_part2_input() {
         let result = part2(INPUT);
         assert_eq!(result, 17820);
@@ -295,7 +294,7 @@ mod tests {
 
     #[test]
     #[rstest]
-    #[case("[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}", 101)]
+    #[case("[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}", 10)]
     fn test_part2_solve_single_machine(#[case] input: &str, #[case] expected: u64) {
         use crate::day10::parsing::parse_line;
 
