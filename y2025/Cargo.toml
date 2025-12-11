@@ -9,6 +9,7 @@ glam = "0.30.9"
 itertools = "0.14.0"
 ndarray = { version = "0.17.1", features = ["rayon"] }
 ndarray-conv = "0.6.0"
+pathfinding = "4.14.0"
 rangemap = "1.7.0"
 rayon = "1.11"
 tracing = "0.1"

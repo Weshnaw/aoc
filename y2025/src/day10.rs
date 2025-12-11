@@ -1,6 +1,5 @@
-use std::collections::{HashSet, VecDeque};
-
 use crate::day10::parsing::parse_full_input;
+use pathfinding::prelude::dijkstra;
 use rayon::prelude::*;
 use tracing::info;
 use winnow::Parser;
@@ -21,28 +20,20 @@ pub fn part1(input: &str) -> u64 {
 }
 
 fn part1_solve_single_machine(machine: &Machine) -> u64 {
-    let mut visited = HashSet::new();
-    let mut queue = VecDeque::new();
+    let res = dijkstra(
+        &0u64,
+        |state| press_buttons_part1(*state, &machine.button_masks),
+        |state| state == &machine.desired_state,
+    )
+    .unwrap();
 
-    let start = 0;
-    visited.insert(start);
-    queue.push_back((start, 0));
+    res.1 as u64
+}
 
-    while let Some((state, dist)) = queue.pop_front() {
-        if state == machine.desired_state {
-            return dist;
-        }
-
-        for &mask in &machine.button_masks {
-            let next = push_button_part1(state, mask);
-
-            if visited.insert(next) {
-                queue.push_back((next, dist + 1));
-            }
-        }
-    }
-
-    u64::MAX
+fn press_buttons_part1(state: u64, buttons: &[u64]) -> impl Iterator<Item = (u64, u32)> {
+    buttons
+        .iter()
+        .map(move |button| (push_button_part1(state, *button), 1))
 }
 
 fn push_button_part1(state: u64, button_mask: u64) -> u64 {
@@ -58,28 +49,14 @@ pub fn part2(input: &str) -> u64 {
 }
 
 fn part2_solve_single_machine(machine: &Machine) -> u64 {
-    let mut visited = HashSet::new();
-    let mut queue = VecDeque::new();
+    let res = dijkstra(
+        &vec![0; machine.joltage_requirements.len()],
+        |state| press_buttons_part2(state.clone(), &machine.button_masks),
+        |state| state == &machine.joltage_requirements,
+    )
+    .unwrap();
 
-    let start = vec![0; machine.joltage_requirements.len()];
-    visited.insert(start.clone());
-    queue.push_back((start, 0));
-
-    while let Some((state, dist)) = queue.pop_front() {
-        if state == machine.joltage_requirements {
-            return dist;
-        }
-
-        for mask in &machine.button_masks {
-            let next = push_button_part2(&state, *mask);
-
-            if visited.insert(next.clone()) {
-                queue.push_back((next, dist + 1));
-            }
-        }
-    }
-
-    u64::MAX
+    res.1 as u64
 }
 struct BitIter(u64);
 
@@ -94,6 +71,12 @@ impl Iterator for BitIter {
         self.0 ^= 1 << index;
         Some(index as usize)
     }
+}
+
+fn press_buttons_part2(state: Vec<u64>, buttons: &[u64]) -> impl Iterator<Item = (Vec<u64>, u32)> {
+    buttons
+        .iter()
+        .map(move |button| (push_button_part2(&state, *button), 1))
 }
 
 fn push_button_part2(state: &[u64], button_mask: u64) -> Vec<u64> {
