@@ -94,7 +94,7 @@ fn part2_solve_single_machine(machine: &Machine) -> u64 {
         optimizer.assert(&current.ge(target));
     });
 
-    // sums the individual action counts
+    // sums the number of times each button was pressed
     let total_actions_taken = actions_taken
         .iter()
         .fold(Int::from_u64(0), |acc, action_count| &acc + action_count);
