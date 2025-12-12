@@ -38,11 +38,13 @@ pub fn part2(input: &str) -> usize {
     // the graph cannot loop, or else the answer would be infinite
     // so we just need to know which comes first, dac or fft
     if count_dac_fft == 0 {
+        // dac -> fft has 0 paths therefore fft must come first (or there are 0 paths)
         let count_svr_fft = count_from_to("svr", "fft", &input);
         let count_fft_dac = count_from_to("fft", "dac", &input);
         let count_dac_out = count_from_to("dac", "out", &input);
         count_svr_fft * count_fft_dac * count_dac_out
     } else {
+        // dac comes first and we complete the calculations
         let count_svr_dac = count_from_to("svr", "dac", &input);
         let count_fft_out = count_from_to("fft", "out", &input);
         count_svr_dac * count_dac_fft * count_fft_out
