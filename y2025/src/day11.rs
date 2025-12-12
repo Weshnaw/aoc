@@ -33,6 +33,31 @@ fn parse_input<'a>(input: &mut &'a str) -> winnow::Result<BTreeMap<&'a str, Vec<
     .parse_next(input)
 }
 
+pub fn part2(input: &str) -> usize {
+    let (_, input) = parse_input.parse_peek(input).unwrap();
+
+    info!(?input);
+
+    count_paths(
+        (false, false, &"svr"),
+        |(has_fft, has_dac, node)| {
+            if let Some(successors) = input.get(*node) {
+                successors
+                    .iter()
+                    .map(move |next| {
+                        let has_fft = *has_fft || (next == &"fft");
+                        let has_dac = *has_dac || (next == &"dac");
+                        (has_fft, has_dac, next)
+                    })
+                    .collect()
+            } else {
+                vec![]
+            }
+        },
+        |(has_fft, has_dac, node)| *node == &"out" && *has_dac && *has_fft,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use test_log::test;
@@ -54,15 +79,41 @@ iii: out
     const INPUT: &str = include_str!("day11_input.txt");
 
     #[test]
-    fn test_example_input() {
+    fn test_part1_example_input() {
         let result = part1(EXAMPLE);
         assert_eq!(result, 5);
     }
 
     #[test]
-    #[ignore]
-    fn test_input() {
+    fn test_part1_input() {
         let result = part1(INPUT);
-        assert_eq!(result, 0);
+        assert_eq!(result, 574);
+    }
+
+    #[test]
+    fn test_part2_example_input() {
+        let result = part2(
+            "\
+svr: aaa bbb
+aaa: fft
+fft: ccc
+bbb: tty
+tty: ccc
+ccc: ddd eee
+ddd: hub
+hub: fff
+eee: dac
+dac: fff
+fff: ggg hhh
+ggg: out
+hhh: out",
+        );
+        assert_eq!(result, 2);
+    }
+
+    #[test]
+    fn test_part2_input() {
+        let result = part2(INPUT);
+        assert_eq!(result, 306594217920240);
     }
 }
