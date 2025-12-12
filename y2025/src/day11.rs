@@ -13,11 +13,7 @@ pub fn part1(input: &str) -> usize {
 
     info!(?input);
 
-    count_paths(
-        &"you",
-        |node| input.get(*node).unwrap(),
-        |node| *node == &"out",
-    )
+    count_from_to("you", "out", &input)
 }
 
 fn parse_input<'a>(input: &mut &'a str) -> winnow::Result<BTreeMap<&'a str, Vec<&'a str>>> {
@@ -38,23 +34,24 @@ pub fn part2(input: &str) -> usize {
 
     info!(?input);
 
+    let count_svr_dac = count_from_to("svr", "dac", &input);
+    let count_dac_fft = count_from_to("dac", "fft", &input);
+    let count_fft_out = count_from_to("fft", "out", &input);
+
+    let count_svr_fft = count_from_to("svr", "fft", &input);
+    let count_fft_dac = count_from_to("fft", "dac", &input);
+    let count_dac_out = count_from_to("dac", "out", &input);
+
+    (count_svr_dac * count_dac_fft * count_fft_out)
+        + (count_svr_fft * count_fft_dac * count_dac_out)
+}
+
+fn count_from_to(start: &str, end: &str, input: &BTreeMap<&str, Vec<&str>>) -> usize {
+    let empty_vec = vec![];
     count_paths(
-        (false, false, &"svr"),
-        |(has_fft, has_dac, node)| {
-            if let Some(successors) = input.get(*node) {
-                successors
-                    .iter()
-                    .map(move |next| {
-                        let has_fft = *has_fft || (next == &"fft");
-                        let has_dac = *has_dac || (next == &"dac");
-                        (has_fft, has_dac, next)
-                    })
-                    .collect()
-            } else {
-                vec![]
-            }
-        },
-        |(has_fft, has_dac, node)| *node == &"out" && *has_dac && *has_fft,
+        &start,
+        |node| input.get(*node).unwrap_or(&empty_vec),
+        |node| *node == &end,
     )
 }
 
