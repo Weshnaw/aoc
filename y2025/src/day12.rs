@@ -1,6 +1,6 @@
 use glam::U64Vec2;
 use ndarray::Array2;
-use tracing::info;
+use tracing::debug;
 use winnow::Parser;
 
 use crate::day12::parsing::parse_input;
@@ -8,33 +8,11 @@ use crate::day12::parsing::parse_input;
 pub fn puzzle(input: &str) -> usize {
     let (_, input) = parse_input.parse_peek(input).unwrap();
 
-    let (trivial, non_trivial): (Vec<_>, Vec<_>) = input
+    input
         .trees
         .iter()
-        .filter(|tree| {
-            // filter out the trivially impossible ones i.e. the total present area > tree area
-            tree.area()
-                >= tree
-                    .present_counts
-                    .iter()
-                    .enumerate()
-                    .map(|(idx, count)| count * input.presents[idx].area())
-                    .sum::<u64>()
-        })
-        .partition(|tree| tree.trimmed_area() >= (9 * tree.present_counts.iter().sum::<u64>()));
-
-    info!(trivial = trivial.len(), non_trivial = non_trivial.len());
-
-    trivial.len()
-        + non_trivial
-            .iter()
-            .filter(|tree| solve_non_trivial_tree(tree, &input.presents))
-            .count()
-}
-
-fn solve_non_trivial_tree(_tree: &Tree, _presents: &[Shape]) -> bool {
-    // TODO: solve non-trivial cases
-    true
+        .filter(|tree| tree.is_possible(&input.presents))
+        .count()
 }
 
 #[derive(Debug)]
@@ -64,10 +42,31 @@ impl Tree {
     fn area(&self) -> u64 {
         self.dimensions.x * self.dimensions.y
     }
-    fn trimmed_area(&self) -> u64 {
-        let trimmed_x = self.dimensions.x - self.dimensions.x % 3;
-        let trimmed_y = self.dimensions.y - self.dimensions.y % 3;
-        trimmed_x * trimmed_y
+    fn area_of_3x3s(&self) -> u64 {
+        (self.dimensions.x / 3) * (self.dimensions.y / 3)
+    }
+
+    fn is_possible(&self, presents: &[Shape]) -> bool {
+        let total_present_area = self
+            .present_counts
+            .iter()
+            .enumerate()
+            .map(|(idx, count)| count * presents[idx].area())
+            .sum::<u64>();
+        if self.area() < total_present_area {
+            // trivially impossible
+            return false;
+        }
+
+        if self.area_of_3x3s() >= self.present_counts.iter().sum::<u64>() {
+            // trivially possible via sparse filling
+            return true;
+        }
+
+        debug!(?self);
+
+        // TODO: solve non-trivial cases
+        true
     }
 }
 
