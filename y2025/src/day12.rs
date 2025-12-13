@@ -8,23 +8,33 @@ use crate::day12::parsing::parse_input;
 pub fn puzzle(input: &str) -> usize {
     let (_, input) = parse_input.parse_peek(input).unwrap();
 
-    info!(?input);
-
-    input
+    let (trivial, non_trivial): (Vec<_>, Vec<_>) = input
         .trees
         .iter()
         .filter(|tree| {
+            // filter out the trivially impossible ones i.e. the total present area > tree area
             tree.area()
-                > tree
+                >= tree
                     .present_counts
                     .iter()
                     .enumerate()
-                    .map(|(idx, count)| {
-                        count * input.presents[idx].area()
-                    })
+                    .map(|(idx, count)| count * input.presents[idx].area())
                     .sum::<u64>()
         })
-        .count()
+        .partition(|tree| tree.trimmed_area() >= (9 * tree.present_counts.iter().sum::<u64>()));
+
+    info!(trivial = trivial.len(), non_trivial = non_trivial.len());
+
+    trivial.len()
+        + non_trivial
+            .iter()
+            .filter(|tree| solve_non_trivial_tree(tree, &input.presents))
+            .count()
+}
+
+fn solve_non_trivial_tree(_tree: &Tree, _presents: &[Shape]) -> bool {
+    // TODO: solve non-trivial cases
+    true
 }
 
 #[derive(Debug)]
@@ -54,6 +64,11 @@ impl Tree {
     fn area(&self) -> u64 {
         self.dimensions.x * self.dimensions.y
     }
+    fn trimmed_area(&self) -> u64 {
+        let trimmed_x = self.dimensions.x - self.dimensions.x % 3;
+        let trimmed_y = self.dimensions.y - self.dimensions.y % 3;
+        trimmed_x * trimmed_y
+    }
 }
 
 mod parsing {
@@ -73,8 +88,7 @@ mod parsing {
                 let flat: Vec<_> = taken_spaces.into_iter().flatten().collect();
                 let shape = Array2::from_shape_vec((3, 3), flat).unwrap();
 
-                let s = Shape { shape };
-                s
+                Shape { shape }
             })
             .parse_next(input)
     }
@@ -133,6 +147,7 @@ mod parsing {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
     use test_log::test;
 
     use super::*;
@@ -176,16 +191,30 @@ mod tests {
     #[test]
     fn test_example_input() {
         let result = puzzle(EXAMPLE);
-        // due to the method of solving by using a trivial heuristic of present_area < tree_area we get the wrong output in the example
-        // but we get the correct output for the puzzle input
-        // assert_eq!(result, 2);
-        assert_eq!(result, 3);
+        assert_eq!(result, 2);
     }
 
     #[test]
-    #[ignore]
     fn test_input() {
         let result = puzzle(INPUT);
         assert_eq!(result, 534);
+    }
+
+    #[test]
+    #[rstest]
+    #[case(
+        "\
+0:
+###
+###
+###
+
+4x5: 2
+4x5: 1",
+        1
+    )]
+    fn test_more_examples(#[case] input: &str, #[case] expected: usize) {
+        let result = puzzle(input);
+        assert_eq!(result, expected);
     }
 }
