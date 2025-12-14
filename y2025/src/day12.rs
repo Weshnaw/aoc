@@ -2,6 +2,10 @@ use glam::U64Vec2;
 use ndarray::Array2;
 use tracing::debug;
 use winnow::Parser;
+use z3::{
+    Solver,
+    ast::{Bool, Int},
+};
 
 use crate::day12::parsing::parse_input;
 
@@ -65,9 +69,106 @@ impl Tree {
 
         debug!(?self);
 
-        // TODO: solve non-trivial cases
-        true
+        z3_solver(presents, &self.dimensions, &self.present_counts)
     }
+}
+
+fn z3_solver(presents: &[Shape], dims: &U64Vec2, desired_presents: &[u64]) -> bool {
+    let solver = Solver::new();
+
+    let dims = (Int::from_u64(dims.x), Int::from_u64(dims.y));
+
+    let presents: Vec<_> = presents
+        .iter()
+        .map(|present| {
+            let shape: Vec<_> = present
+                .shape
+                .iter()
+                .map(|space| Bool::from_bool(*space))
+                .collect();
+
+            Array2::from_shape_vec((3, 3), shape).unwrap()
+        })
+        .collect();
+
+    let desired: Vec<_> = desired_presents
+        .iter()
+        .enumerate()
+        .flat_map(|(idx, desired)| create_z3_consts(&solver, idx, *desired, &dims))
+        .collect();
+
+    let mut occupied_positions: Vec<(Int, Int, &Bool)> = vec![];
+
+    for (present_idx, (position_x, position_y), _rotation, _mirrored) in desired {
+        let current_present = &presents[present_idx];
+
+        for x in 0..3 {
+            for y in 0..3 {
+                // TODO: somehow account for mirroring and rotations
+                let position_x = Int::from_u64(x) + &position_x;
+                let position_y = Int::from_u64(y) + &position_y;
+
+                let x_in_bounds =
+                    Bool::and(&[position_x.ge(Int::from_u64(0)), position_x.lt(&dims.0)]);
+                let y_in_bounds =
+                    Bool::and(&[position_y.ge(Int::from_u64(0)), position_y.lt(&dims.1)]);
+
+                let space_desired = &current_present[(x as usize, y as usize)];
+
+                for occupied in occupied_positions.iter() {
+                    solver.assert(Bool::or(&[
+                        space_desired.not(),
+                        Bool::or(&[
+                            x_in_bounds.not(),
+                            y_in_bounds.not(),
+                            Bool::and(&[
+                                &position_x.eq(&occupied.0),
+                                &position_y.eq(&occupied.1),
+                                occupied.2,
+                                &x_in_bounds,
+                                &y_in_bounds,
+                            ]),
+                        ]),
+                    ]));
+                }
+
+                occupied_positions.push((position_x, position_y, space_desired));
+            }
+        }
+    }
+
+    matches!(solver.check(), z3::SatResult::Sat)
+}
+
+fn create_z3_consts(
+    solver: &Solver,
+    present_idx: usize,
+    desired: u64,
+    (x_limit, y_limit): &(Int, Int),
+) -> Vec<(usize, (Int, Int), Int, Bool)> {
+    (0..desired)
+        .map(|p| {
+            let pos_name = format!("x_position_{present_idx}_{p}");
+            let x_position = Int::new_const(pos_name);
+            solver.assert(x_position.ge(Int::from_u64(0)));
+            solver.assert(x_position.lt(x_limit));
+            let pos_name = format!("y_position_{present_idx}_{p}");
+            let y_position = Int::new_const(pos_name);
+            solver.assert(y_position.ge(Int::from_u64(0)));
+            solver.assert(y_position.lt(y_limit));
+            let position = (x_position, y_position);
+
+            let rot_name = format!("rotation_{present_idx}_{p}");
+            let rotation = Int::new_const(rot_name);
+            solver.assert(rotation.ge(Int::from_u64(0)));
+            solver.assert(rotation.lt(Int::from_u64(4)));
+
+            let mir_name = format!("mirrored_{present_idx}_{p}");
+            let mirrored = Bool::new_const(mir_name);
+
+            (present_idx, position, rotation, mirrored)
+        })
+        .collect()
 }
 
 mod parsing {
@@ -210,6 +311,16 @@ mod tests {
 
 4x5: 2
 4x5: 1",
+        1
+    )]
+    #[case(
+        "\
+0:
+###
+#..
+###
+
+4x4: 2",
         1
     )]
     fn test_more_examples(#[case] input: &str, #[case] expected: usize) {
